@@ -5,42 +5,34 @@
     Sliders
 {% endblock %}
 
+{% block styles %}
+    <link rel="stylesheet" type="text/css" href="{% static "slider_task/sliders.css" %}">
+{% endblock %}
 
 {% block content %}
 
     {{ slider_formset.management_form }}
     
-    {% for val, form in slider_values_and_forms %}
-        {{ val }} - {{ form }}
-    {% endfor %}
-    
+    <table class="slider_table">
+        <tr>
+        {% for chunk in slider_values_and_forms %}
+            <td>
+            {% for offset, min, max, start, form in chunk %}
+                <div class="slidecontainer" style="margin-left: {{ offset }}%;">
+                    <input type="range" min="{{ min }}" max="{{ max }}" value="{{ start }}" class="slider" id="{{ form.end_pos.id_for_label }}" name="{{ form.end_pos.html_name }}">
+                    <input type="hidden" id="{{ form.touched.id_for_label }}" name="{{ form.touched.html_name }}" value="False">
+                    <input type="hidden" id="{{ form.id.id_for_label }}" name="{{ form.id.html_name }}" value="{{ form.id.value }}">
+                </div>
+            {% endfor %}
+            </td>
+        {% endfor %}
+        </tr>
+    </table>
+
 
     {% next_button %}
-
 {% endblock %}
 
 {% block scripts %}
-    <script type="text/javascript">
-    
-        function set_touched(event) {
-            var hidden_field_id = this.id.substring(0, this.id.length-9) + "touched";
-            var touch_element = document.getElementById(hidden_field_id);
-            touch_element.value = "True";
-            this.removeEventListener('change', set_touched)
-        }
-
-        var values = [];
-
-        {% for val in value_list %}
-            values.push({{ val }});
-        {% endfor %}
-
-        var sliders = document.getElementsByClassName("form-control");
-
-        for (i = 0; i < sliders.length; i++) {
-            sliders[i].value = values[i];
-            sliders[i].addEventListener('change', set_touched);
-        }
-
-    </script>
+    <script type="text/javascript" src="{% static "slider_task/sliders.js" %}"></script>
 {% endblock %}

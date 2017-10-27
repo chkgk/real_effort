@@ -7,12 +7,18 @@ from .models import Constants
 from .models import Slider
 from django.forms import modelformset_factory, HiddenInput
 from otree.api import widgets
+from math import ceil
+from random import randint
 
-
-SliderFormSet = modelformset_factory(Slider, fields=('end_value', 'touched'), extra=0, widgets={'end_value': widgets.SliderInput(attrs={'step': '1'}), 'touched': HiddenInput()})
+SliderFormSet = modelformset_factory(Slider, fields=('end_pos', 'touched'), extra=0)
 
 
 class Sliders(Page):
+
+    def _chunks(self, l, n):
+        """Yield successive n-sized chunks from l."""
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
 
     def vars_for_template(self):
         sliders_query_set = Slider.objects.filter(player__exact=self.player)
@@ -20,10 +26,34 @@ class Sliders(Page):
 
         slider_formset = SliderFormSet(queryset=sliders_query_set)
 
+        # starting_values = [s.start_pos for s in sliders_query_set]
+        # min_values = [s.minimum for s in sliders_query_set]
+        # max_values = [s.maximum for s in sliders_query_set]
+        # offsets = [randint(0, 10) for _ in sliders_query_set]
+
+        starting_values = []
+        min_values = []
+        max_values = []
+        offsets = []
+        for s in sliders_query_set:
+            starting_values.append(s.start_pos)
+            min_values.append(s.minimum)
+            max_values.append(s.maximum)
+            offsets.append(randint(0, 10))
+
+
+        if hasattr(Constants, 'slider_columns'):
+            if Constants.slider_columns > 0:
+                slider_columns = Constants.slider_columns
+        else:
+            slider_columns = 1
+
+        chunk_size = ceil(Constants.num_sliders / slider_columns)
+
         return {
             'slider_formset': slider_formset,
-            'slider_values_and_forms': zip([s.start_value for s in sliders_query_set], slider_formset.forms),
-            'value_list': [s.start_value for s in sliders_query_set]
+            'slider_values_and_forms': list(self._chunks(list(zip(offsets, min_values, max_values, starting_values, slider_formset.forms)), chunk_size)),
+            'slider_columns': slider_columns
         }
 
     def before_next_page(self):
@@ -34,18 +64,19 @@ class Sliders(Page):
         for i in range(Constants.num_sliders):
             input_prefix = 'form-%d-' % i
 
-            # get the inputs
             slider_id = int(submitted_data[input_prefix + 'id'])
-            end_value = submitted_data[input_prefix + 'end_value']
+            end_pos = submitted_data[input_prefix + 'end_pos']
             touched = submitted_data[input_prefix + 'touched']
 
-            # lookup by ID and save submitted data
             slider = slider_objs_by_id[slider_id]
-            slider.end_value = end_value
+            slider.end_pos = end_pos
             slider.touched = True if touched == "True" else False
-            
-            # important: save to DB!
             slider.save()
+
+            slider.is_centered()
+            slider.save()
+
+        self.player.count_centered_sliders()
 
 
 page_sequence = [
