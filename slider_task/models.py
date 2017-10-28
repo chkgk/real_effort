@@ -7,6 +7,10 @@ from otree.api import (
 from otree.db.models import Model, ForeignKey
 import random
 
+
+from .slider.models import BaseSlider
+
+
 author = 'Christian König'
 
 doc = """
@@ -23,8 +27,6 @@ class Constants(BaseConstants):
     num_sliders = 50
 
     slider_columns = 3 # optional
-    slider_range = (0, 100) # optional
-
 
 
 
@@ -52,7 +54,8 @@ class Player(BasePlayer):
         distance from center etc.)
         """
         for _ in range(Constants.num_sliders):
-            slider = self.slider_set.create()
+            slider = Slider()
+            slider.player = self
             slider.set_starting_pos()
             slider.save()
 
@@ -67,38 +70,18 @@ class Player(BasePlayer):
         self.centered_sliders = sum_centered
 
 
-class Slider(Model):
-    if hasattr(Constants, 'slider_range'):
-        if not Constants.slider_range[1] > Constants.slider_range[0]:
-            raise Exception("the first element of slider range must be smaller than second element.")
-
-        if not (Constants.slider_range[1]-Constants.slider_range[0]) % 2 == 0:
-            raise Exception("slider range must result in an uneven number of possible positions.")
-
-        slider_min = Constants.slider_range[0]
-        slider_max = Constants.slider_range[1] 
-    else:
-        slider_min = 0
-        slider_max = 100
-
-    minimum = models.IntegerField(initial=slider_min)
-    maximum = models.IntegerField(initial=slider_max)
-
-    start_pos = models.IntegerField()
-    end_pos = models.IntegerField()
-
-    touched = models.BooleanField(initial=False)
-    centered = models.BooleanField(initial=False)
-
+class Slider(BaseSlider):
     player = ForeignKey(Player)
+    minimum = 0
+    maximum = 1000
 
-    def set_starting_pos(self):
-        self.start_pos = random.randint(self.minimum, self.maximum)
 
-    def distance_from_center(self):
-        return abs((self.minimum + self.maximum)/2 - int(self.end_pos))
-
-    def is_centered(self):
-        self.centered = self.distance_from_center() == 0
-        return self.centered
-
+# class SliderSet:
+#     def __init__(self, player, num_sliders, slider_range=(0, 100)):
+#         for _ in num_sliders:
+#             slider = Slider()
+#             slider.player = player
+#             slider.minimum = slider_range[0]
+#             slider.maximum = slider_range[1]
+#             slider.set_starting_pos()
+#             slider.save()
